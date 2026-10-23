@@ -50,7 +50,7 @@ def train_model():
     return model, len(df), using_sample
 
 
-def predict_five(model, d):
+def predict_numbers(model, d, count):
     ts = pd.Timestamp(d)
     X_target = pd.DataFrame([{
         "Year_Num": ts.year,
@@ -59,12 +59,12 @@ def predict_five(model, d):
         "DayOfWeek": ts.dayofweek,
         "DayOfYear": ts.dayofyear,
     }])
-    preds = [tree.predict(X_target.values)[0] for tree in model.estimators_[:5]]
+    preds = [tree.predict(X_target.values)[0] for tree in model.estimators_[:count]]
     return [str(int(round(p))).zfill(6) for p in preds]
 
 
 st.title("🎟️ Lottery Number Generator")
-st.caption("Pick a date and get 5 numbers from a Random Forest model trained on past results.")
+st.caption("Pick a date, choose how many numbers you want, and get them from a Random Forest model trained on past results.")
 
 model, n_rows, using_sample = train_model()
 if using_sample:
@@ -75,12 +75,17 @@ else:
 chosen = st.date_input("Select a date", value=pd.Timestamp("2026-11-15"),
                        min_value=pd.Timestamp("2000-01-01"), max_value=pd.Timestamp("2100-12-31"))
 
+count = st.number_input("How many lottery numbers do you want?", min_value=1,
+                        max_value=len(model.estimators_), value=10, step=1)
+
 if st.button("Generate numbers", type="primary"):
-    numbers = predict_five(model, chosen)
-    st.subheader(f"Numbers for {chosen.strftime('%d %b %Y')}")
-    cols = st.columns(5)
-    for col, num in zip(cols, numbers):
-        col.metric("", num)
+    numbers = predict_numbers(model, chosen, int(count))
+    st.subheader(f"{len(numbers)} numbers for {chosen.strftime('%d %b %Y')}")
+    for i in range(0, len(numbers), 5):
+        row = numbers[i:i + 5]
+        cols = st.columns(5)
+        for col, num in zip(cols, row):
+            col.metric("", num)
 
 st.divider()
 st.caption(
